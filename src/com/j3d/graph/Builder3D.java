@@ -11,7 +11,11 @@ import javafx.scene.Camera;
 import javafx.scene.Group;
 import javafx.scene.PerspectiveCamera;
 import javafx.scene.Scene;
+import javafx.scene.SubScene;
+import javafx.scene.control.Label;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.GridPane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.Box;
@@ -23,21 +27,21 @@ import javafx.stage.Stage;
 
 public class Builder3D extends Application{
 	
-	final PhongMaterial redMaterial = new PhongMaterial();
-	final PhongMaterial greenMaterial = new PhongMaterial();
-	final PhongMaterial blueMaterial = new PhongMaterial();
-	final PhongMaterial blackMaterial = new PhongMaterial();
-	final PhongMaterial yellowMaterial = new PhongMaterial();
-	final PhongMaterial orangeMaterial = new PhongMaterial();
+	private final PhongMaterial redMaterial = new PhongMaterial();
+	private final PhongMaterial greenMaterial = new PhongMaterial();
+	private final PhongMaterial blueMaterial = new PhongMaterial();
+	private final PhongMaterial blackMaterial = new PhongMaterial();
+	private final PhongMaterial yellowMaterial = new PhongMaterial();
+	private final PhongMaterial orangeMaterial = new PhongMaterial();
 	
-	Rotate xRotate = new Rotate(0, 0, 0, 0, Rotate.X_AXIS);
-	Rotate yRotate = new Rotate(0, 0, 0, 0, Rotate.Y_AXIS);
-	double mouseXOld = 0;
-	double mouseYOld = 0;
+	private Rotate xRotate = new Rotate(0, 0, 0, 0, Rotate.X_AXIS);
+	private Rotate yRotate = new Rotate(0, 0, 0, 0, Rotate.Y_AXIS);
+	private double mouseXOld = 0;
+	private double mouseYOld = 0;
 	
-	int AXIS_LENGTH = 600;
-	double POS_FACTOR = 2;
-	double LINE_POS_FACTOR = 1;
+	private int AXIS_LENGTH = 600;
+	private double POS_FACTOR = 2;
+	private double LINE_POS_FACTOR = 1;
 	
 	int distanceAmongPoints = 40;
 	int graphWidth = 10;
@@ -76,6 +80,7 @@ public class Builder3D extends Application{
     	
     }
     
+    //TODO : start to be removed
     public void setup(){
     	
 	    String xString = "434 328 391 462 26 89 138 245 272 5 407 314 107 212 315 318 121 42 380 54";
@@ -93,12 +98,12 @@ public class Builder3D extends Application{
 			locValues[x][0] = Double.parseDouble(xStrArray[x]);
 			locValues[x][1] = Double.parseDouble(yStrArray[x]);
 			locValues[x][2] = Double.parseDouble(zStrArray[x]);
-		}
-		
-		
+		}		
 		setValue(locValues);
     }
+    // TODO : End
     
+    //for setting values of the graph. accepts 2D array, supplying x,y,z coordinates
     public void setValue(double[][] coordValues){
     	
     	for(int c = 0; c < coordValues.length; c++){
@@ -118,7 +123,15 @@ public class Builder3D extends Application{
 		setup();
 		
 		// frame set up..
-		Group root = new Group();		        
+		Group mainRoot = new Group();	//mother of all		
+		Scene scene = new Scene(mainRoot, 1500, 800,Color.BLACK);  // mother all - clubbing with a scene
+		 
+		
+		Group root = new Group();	// Root of graphics
+		SubScene subscene = new SubScene(root, 1500, 800); // clubbing  Root of graphics of a sub scene
+		GridPane labelRoot = new GridPane(); //root a details panel
+		
+		
 		Box xAxis = createGraph(AXIS_LENGTH, 1);
 		Box yAxis = createGraph(AXIS_LENGTH, 2);
 		Box zAxis = createGraph(AXIS_LENGTH, 3);
@@ -130,15 +143,25 @@ public class Builder3D extends Application{
 	    root.setTranslateY(200);
 	    root.setRotationAxis(Rotate.X_AXIS);
 	    root.setRotate(180.0);	    
-        Scene scene = new Scene(root, 1500, 800,Color.BLACK);  
+	    
+	   
+//	    mainRoot.getChildren().add(root);
+	    
+	    
+	    
+        
         Camera camera = new PerspectiveCamera();
         camera.getTransforms().addAll(xRotate, yRotate);     
-        scene.setCamera(camera);
-
-        for(DataObject dO :values){
-				
-				root.getChildren().add(createPoints(10.0, yellowMaterial, dO.getxVal(), dO.getyVal(), dO.getzVal()));				
+        subscene.setCamera(camera);
+       
+//        mainRoot.getChildren().add(labelRoot);
+        //plotting point spheres
+        int labelCount = 0;
+        for(DataObject dO :values){				
+				root.getChildren().add( createPoints(mainRoot, "Sphere"+(labelCount++), 10.0, yellowMaterial, dO.getxVal(), dO.getyVal(), dO.getzVal()));				
 		}
+        
+        // plotting connecting lines
 		for(int count = 0; count < (values.size() -1); count++){
 				
 				DataObject dO1 = values.get(count);
@@ -148,6 +171,7 @@ public class Builder3D extends Application{
 				root.getChildren().add(createConnection(start, end));
 		}
        
+		// Adding rotation
         EventHandler handler = new EventHandler<MouseEvent>() {
             public void handle(MouseEvent event) {
             	if (event.getEventType() == MouseEvent.MOUSE_PRESSED || event.getEventType() == MouseEvent.MOUSE_DRAGGED){
@@ -170,9 +194,11 @@ public class Builder3D extends Application{
             }
           };
           
-        scene.addEventHandler(MouseEvent.ANY, handler);
+        subscene.addEventHandler(MouseEvent.ANY, handler);
+        
+        mainRoot.getChildren().add(subscene);
 	    stage.setTitle("Drawing a Sphere"); 
-	    stage.setScene(scene); 
+	    stage.setScene(scene);
 	    stage.show(); 
 	}
 	
@@ -193,14 +219,29 @@ public class Builder3D extends Application{
 		return xAxis;
 	}
 	
-	private Sphere createPoints( double sphereRadius, PhongMaterial spehereMaterial, double xPosition, double yPosition, double zPosition){
+	private Sphere createPoints(Group root, String sphereID, double sphereRadius, PhongMaterial spehereMaterial, double xPosition, double yPosition, double zPosition){
 		
 		 Sphere sphere = new Sphere();
+		 sphere.setId(sphereID);
+		
 		 sphere.setRadius(sphereRadius);   
 		 sphere.setMaterial(spehereMaterial);		 
 		 sphere.setTranslateX(xPosition); 
 		 sphere.setTranslateY(yPosition);
-		 sphere.setTranslateZ(zPosition);		 
+		 sphere.setTranslateZ(zPosition);		
+		 
+		 sphere.setOnMousePressed(event-> {			
+
+//				System.out.println(" Clicked on a point.." + event.getSource());
+				GridPane details = showPane(event.getSource().toString());
+				root.getChildren().removeAll();
+				root.getChildren().add(details);
+//				root.setTranslateX(800);
+//				root.setTranslateY(300);
+				//stage.setScene(details);
+				//stage.show();			
+		 });
+		 
 		 return sphere;
 	}
 	
@@ -210,8 +251,7 @@ public class Builder3D extends Application{
 		 box.setMaterial(m);		
 		 return box;
 	}
-	
-		
+			
 	public Cylinder createConnection(Point3D origin, Point3D target) {
 		
 	    Point3D yAxis = new Point3D(0, 1, 0);
@@ -244,10 +284,9 @@ public class Builder3D extends Application{
 			xAxisAtZEnd.setTranslateZ(count);
 			root.getChildren().addAll(xAxisAtZEnd);
 		}
-		
-		
-		
+				
 		for(int count =0; count <=AXIS_LENGTH; count= count+graphWidth  ){
+			
 			Box yAxisAtXEnd = createLines(POS_FACTOR, AXIS_LENGTH, POS_FACTOR, redMaterial);	
 			yAxisAtXEnd.setTranslateY(AXIS_LENGTH/2);//Y-axis towards X
 			yAxisAtXEnd.setTranslateX(count);
@@ -278,47 +317,31 @@ public class Builder3D extends Application{
 		}
 	}
 	
-	
-	
-
+	private GridPane showPane (String nomeOfTheSphere) {
+		
+		GridPane root = new GridPane();
+		
+		Label headingLabel = new Label(nomeOfTheSphere);  
+		Label xAxisLabel=new Label("X axis value");  
+		Label xAxisValue=new Label("X axis value");  
+		Label yAxisLabel=new Label("Y axis value");  
+		Label yAxisValue=new Label("Y axis value");  
+		Label zAxisLabel=new Label("Z axis value");  
+		Label zAxisValue=new Label("Z axis value");            
+         
+//        Scene scene = new Scene(root,400,200);  
+		root.addRow(0, headingLabel);  
+        root.addRow(1, xAxisLabel, xAxisValue);  
+        root.addRow(2, yAxisLabel, yAxisValue);  
+        root.addRow(3, zAxisLabel, zAxisValue); 
+        
+        
+        return root;
+        
+	}
 	public static void main(String[] args) {
 		
-		
-		
 		launch(args);
-	}
-
-
-	class DataObject{
-		
-		DataObject(double xVal, double yVal, double zVal){
-			
-			this.xVal = xVal;
-			this.yVal = yVal;
-			this.zVal = zVal;
-		}
-		private double xVal;
-		public double getxVal() {
-			return xVal;
-		}
-		public void setxVal(double xVal) {
-			this.xVal = xVal;
-		}
-		public double getyVal() {
-			return yVal;
-		}
-		public void setyVal(double yVal) {
-			this.yVal = yVal;
-		}
-		public double getzVal() {
-			return zVal;
-		}
-		public void setzVal(double zVal) {
-			this.zVal = zVal;
-		}
-		private double yVal;
-		private double zVal;
-	}
-	
+	}	
 
 }
