@@ -1,7 +1,10 @@
 package com.j3d.graph;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import javafx.application.Application;
 import javafx.application.ConditionalFeature;
 import javafx.application.Platform;
@@ -12,8 +15,7 @@ import javafx.scene.Group;
 import javafx.scene.PerspectiveCamera;
 import javafx.scene.Scene;
 import javafx.scene.SubScene;
-import javafx.scene.control.Label;
-import javafx.scene.input.KeyEvent;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.paint.Color;
@@ -21,6 +23,7 @@ import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.Box;
 import javafx.scene.shape.Cylinder;
 import javafx.scene.shape.Sphere;
+import javafx.scene.text.Text;
 import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
 import javafx.stage.Stage;
@@ -39,6 +42,8 @@ public class Builder3D extends Application{
 	private double mouseXOld = 0;
 	private double mouseYOld = 0;
 	
+	private final int screenLength = 1500;
+	private final int screenHeight = 800;
 	private int AXIS_LENGTH = 600;
 	private double POS_FACTOR = 2;
 	private double LINE_POS_FACTOR = 1;
@@ -49,6 +54,7 @@ public class Builder3D extends Application{
 	
 
 	private List<DataObject> values = new ArrayList<DataObject>();
+	private Map<String, DataObject> valueMapping = new HashMap<String, DataObject>();
 	
 	//434 328 391 462 26 89 138 245 272 5 407 314 107 212 315 318 121 42 380 54
 	//85 2 335 210 435 305 58 246 243 467 94 482 66 79 353 51 49 75 23 24
@@ -93,24 +99,26 @@ public class Builder3D extends Application{
 		
 		double [][] locValues = new double[20][3];
 		
+		List<DataObject>  values = new ArrayList<DataObject>();
 		for(int x=0; x<20; x++){
 			
-			locValues[x][0] = Double.parseDouble(xStrArray[x]);
-			locValues[x][1] = Double.parseDouble(yStrArray[x]);
-			locValues[x][2] = Double.parseDouble(zStrArray[x]);
+			DataObject dObject = new DataObject(Double.parseDouble(xStrArray[x]), Double.parseDouble(yStrArray[x]), Double.parseDouble(zStrArray[x]));
+			Map valueSet = new HashMap();
+			valueSet.put("Name", "Name "+ x);
+			valueSet.put("Age", "Age "+ x);
+			valueSet.put("DESIGNATION", "DESIGNATION "+ x);
+			valueSet.put("AREA", "AREA "+ x);
+			dObject.setValues(valueSet);
+			values.add(dObject);
+			
 		}		
-		setValue(locValues);
+		setValue(values);
     }
     // TODO : End
     
     //for setting values of the graph. accepts 2D array, supplying x,y,z coordinates
-    public void setValue(double[][] coordValues){
-    	
-    	for(int c = 0; c < coordValues.length; c++){
-			
-			DataObject dob = new DataObject(coordValues[c][0], coordValues[c][1], coordValues[c][2]);
-			values.add(dob);
-		}
+    public void setValue(List<DataObject> coordValues){
+    	values = coordValues;
     }
     
 	@Override
@@ -124,12 +132,12 @@ public class Builder3D extends Application{
 		
 		// frame set up..
 		Group mainRoot = new Group();	//mother of all		
-		Scene scene = new Scene(mainRoot, 1500, 800,Color.BLACK);  // mother all - clubbing with a scene
+		Scene scene = new Scene(mainRoot, screenLength, screenHeight,Color.BLACK);  // mother all - clubbing with a scene
 		 
 		
 		Group root = new Group();	// Root of graphics
-		SubScene subscene = new SubScene(root, 1500, 800); // clubbing  Root of graphics of a sub scene
-		GridPane labelRoot = new GridPane(); //root a details panel
+		SubScene subscene = new SubScene(root, screenLength, screenHeight); // clubbing  Root of graphics of a sub scene
+//		GridPane labelRoot = new GridPane(); //root a details panel
 		
 		
 		Box xAxis = createGraph(AXIS_LENGTH, 1);
@@ -139,8 +147,8 @@ public class Builder3D extends Application{
       	root.getChildren().addAll(yAxis);
       	root.getChildren().addAll(zAxis);
 		createGrpahLines (root);
-		root.setTranslateX(500);
-	    root.setTranslateY(200);
+		root.setTranslateX(screenLength/3);
+	    root.setTranslateY(screenHeight /5);
 	    root.setRotationAxis(Rotate.X_AXIS);
 	    root.setRotate(180.0);	    
 	    
@@ -157,8 +165,11 @@ public class Builder3D extends Application{
 //        mainRoot.getChildren().add(labelRoot);
         //plotting point spheres
         int labelCount = 0;
-        for(DataObject dO :values){				
-				root.getChildren().add( createPoints(mainRoot, "Sphere"+(labelCount++), 10.0, yellowMaterial, dO.getxVal(), dO.getyVal(), dO.getzVal()));				
+        for(DataObject dO :values){	
+        	
+        	Sphere s = createPoints(mainRoot, "Sphere"+(labelCount++), 10.0, yellowMaterial, dO.getxVal(), dO.getyVal(), dO.getzVal());
+        	valueMapping.put(s.getId(), dO);
+			root.getChildren().add(s );				
 		}
         
         // plotting connecting lines
@@ -228,16 +239,36 @@ public class Builder3D extends Application{
 		 sphere.setMaterial(spehereMaterial);		 
 		 sphere.setTranslateX(xPosition); 
 		 sphere.setTranslateY(yPosition);
-		 sphere.setTranslateZ(zPosition);		
+		 sphere.setTranslateZ(zPosition);	
+		 
+		 sphere.setOnMouseEntered(event-> {		
+			 sphere.setScaleX(2);
+			 sphere.setScaleY(2);
+			 sphere.setScaleZ(2);
+		 });
+		 
+		 sphere.setOnMouseExited(event-> {		
+			 sphere.setScaleX(1);
+			 sphere.setScaleY(1);
+			 sphere.setScaleZ(1);
+		 });
 		 
 		 sphere.setOnMousePressed(event-> {			
 
 //				System.out.println(" Clicked on a point.." + event.getSource());
-				GridPane details = showPane(event.getSource().toString());
-				root.getChildren().removeAll();
+				GridPane details = showPane(((Sphere)event.getSource()).getId());
+//				root.getChildren().clear();
+				
+				for (Object o : root.getChildren().toArray()) {
+					if(o instanceof GridPane) {						
+						root.getChildren().remove(o);
+					}
+				}
+				
 				root.getChildren().add(details);
-//				root.setTranslateX(800);
-//				root.setTranslateY(300);
+				details.setTranslateX(screenLength - 300);
+				details.setTranslateY(40);
+				
 				//stage.setScene(details);
 				//stage.show();			
 		 });
@@ -321,20 +352,30 @@ public class Builder3D extends Application{
 		
 		GridPane root = new GridPane();
 		
-		Label headingLabel = new Label(nomeOfTheSphere);  
-		Label xAxisLabel=new Label("X axis value");  
-		Label xAxisValue=new Label("X axis value");  
-		Label yAxisLabel=new Label("Y axis value");  
-		Label yAxisValue=new Label("Y axis value");  
-		Label zAxisLabel=new Label("Z axis value");  
-		Label zAxisValue=new Label("Z axis value");            
-         
-//        Scene scene = new Scene(root,400,200);  
-		root.addRow(0, headingLabel);  
-        root.addRow(1, xAxisLabel, xAxisValue);  
-        root.addRow(2, yAxisLabel, yAxisValue);  
-        root.addRow(3, zAxisLabel, zAxisValue); 
-        
+		DropShadow ds = new DropShadow();
+		ds.setOffsetY(3.0f);
+		ds.setColor(Color.color(0.4f, 0.4f, 0.4f));
+		
+		DataObject dObj = valueMapping.get(nomeOfTheSphere);
+		
+		Text headingLabel = new Text(nomeOfTheSphere);  
+//		headingLabel.setEffect(ds);
+		headingLabel.setCache(true);		
+		headingLabel.setFill(Color.GREEN);
+		root.addRow(0, headingLabel); 
+		
+		Map <String, String> vals = dObj.getValues();
+		
+		int rowCount = 0;
+		for(String key : vals.keySet()) {
+			
+			Text xAxisLabel = new Text(key + "    "); 
+			xAxisLabel.setFill(Color.GREEN);
+//			System.out.println(" vals.get(key)" +vals.get(key));
+			Text xAxisValue = new Text(vals.get(key)); 
+			xAxisValue.setFill(Color.GREEN);
+			root.addRow(++rowCount, xAxisLabel, xAxisValue);  
+		}      
         
         return root;
         
